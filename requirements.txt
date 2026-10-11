@@ -1,5 +1,3 @@
-asgiref @ file:///C:/Users/task_FdMxjXJKRx6Pl_0/croot/asgiref_1785999599113/work
-Django @ file:///C:/miniconda3/conda-bld/django_1764329327954/work
-packaging==26.3
-sqlparse @ file:///C:/Users/task_178791225856244/croot/sqlparse_1787912341720/work
-typing_extensions @ file:///C:/Users/task_EDsWzFOYRby3O_0/croot/typing_extensions_1784101035613/work
+Django==5.2.8
+asgiref>=3.8
+sqlparse>=0.5
