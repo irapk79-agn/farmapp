@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Farm</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: system-ui, sans-serif; background: #f5faf5; margin: 0; padding: 20px; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        h1 { color: #2e7d32; margin: 0; font-size: 22px; }
+        .logout { color: #c62828; text-decoration: none; font-size: 14px; }
+
+        .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 24px; }
+        .stat { background: white; padding: 10px 16px; border-radius: 8px;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.08); font-size: 13px; color: #555; }
+        .stat b { display: block; font-size: 20px; color: #2e7d32; margin-top: 2px; }
+        .stat.allocated b { color: #1b5e20; }
+        .stat.free b { color: #e65100; }
+
+        .legend { display: flex; gap: 20px; margin-bottom: 12px; font-size: 13px; color: #555; }
+        .legend span { display: flex; align-items: center; gap: 6px; }
+        .legend .swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+        .swatch.allocated { background: #c8e6c9; border: 1px solid #81c784; }
+        .swatch.free      { background: #fff3e0; border: 1px solid #ffcc80; }
+        .swatch.hidden    { background: #f5f5f5; border: 1px solid #e0e0e0; }
+
+        .grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; max-width: 720px; }
+        .cell { aspect-ratio: 1; border-radius: 6px;
+                display: flex; align-items: center; justify-content: center;
+                font-size: 13px; font-weight: 600;
+                text-decoration: none; }
+
+        .cell.hidden     { background: #fafafa; color: #ccc; border: 1px solid #eee; }
+        .cell.allocated  { background: #c8e6c9; color: #1b5e20; border: 1px solid #81c784; }
+        .cell.allocated:hover { background: #a5d6a7; }
+        .cell.free       { background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
+        .cell.free:hover { background: #ffe0b2; }
+    </style>
+</head>
+<body>
+   <header>
+    <h1>🌱 My Farm — {{ request.user.username }}</h1>
+    <div style="display:flex; gap:16px; align-items:center;">
+        {% if request.user.is_superuser or request.user.is_staff %}
+            <a href="/admin/" style="color:#2e7d32; text-decoration:none; font-size:14px; font-weight:600;">
+                ⚙️ Admin Panel
+            </a>
+        {% endif %}
+        <a class="logout" href="{% url 'logout' %}">Logout</a>
+    </div>
+</header>
+
+    <div class="stats">
+        <div class="stat">My Blocks<b>{{ total_blocks }}</b></div>
+        <div class="stat allocated">Allocated<b>{{ allocated_count }}</b></div>
+        <div class="stat free">Free<b>{{ free_count }}</b></div>
+        <div class="stat">Plowing<b>{{ status_counts.PLOWING }}</b></div>
+        <div class="stat">Seeding<b>{{ status_counts.SEEDING }}</b></div>
+        <div class="stat">Watering<b>{{ status_counts.WATERING }}</b></div>
+        <div class="stat">Ready<b>{{ status_counts.READY_TO_HARVEST }}</b></div>
+        <div class="stat">Harvested<b>{{ status_counts.HARVESTED }}</b></div>
+    </div>
+
+    <div class="legend">
+        <span><i class="swatch allocated"></i> Allocated to an owner</span>
+        <span><i class="swatch free"></i> Free (unassigned)</span>
+        <span><i class="swatch hidden"></i> Not visible to you</span>
+    </div>
+
+    
+<div class="grid">
+    {% for num, block in grid %}
+        {% if block %}
+            {% if block.owner %}
+                <a class="cell allocated" href="{% url 'block_detail' num %}"
+                   title="Block {{ num }} — Owner: {{ block.owner.name }}"
+                   style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                    <span style="font-weight:700;">{{ num }}</span>
+                    <span style="font-size:8px; color:#1b5e20; margin-top:2px; max-width:100%;
+                                 overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        {{ block.owner.name }}
+                    </span>
+                </a>
+            {% else %}
+                <a class="cell free" href="{% url 'block_detail' num %}"
+                   title="Block {{ num }} — Free (no owner)"
+                   style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                    <span style="font-weight:700;">{{ num }}</span>
+                    <span style="font-size:8px; color:#e65100; margin-top:2px;">
+                        free
+                    </span>
+                </a>
+            {% endif %}
+        {% else %}
+            <div class="cell hidden">{{ num }}</div>
+        {% endif %}
+    {% endfor %}
+</div>
+</body>
+</html>
