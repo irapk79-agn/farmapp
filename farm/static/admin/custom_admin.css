@@ -1,0 +1,34 @@
+/* Sortable column headers — clearly clickable */
+#result_list thead th.sortable a {
+    color: #1b5e20 !important;
+    font-weight: 700 !important;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+#result_list thead th.sortable a:hover {
+    color: #2e7d32 !important;
+    text-decoration-style: solid;
+}
+
+/* Add a sort hint arrow to sortable (but not currently-sorted) columns */
+#result_list thead th.sortable a::after {
+    content: " ↕";
+    font-size: 12px;
+    opacity: 0.6;
+    margin-left: 3px;
+}
+
+/* Hide the hint on the column that's currently sorted (Django shows its own arrow) */
+#result_list thead th.sorted a::after {
+    content: "";
+}
+
+/* Highlight the whole header cell of sortable columns */
+#result_list thead th.sortable {
+    background: #f1f8e9;
+}
+#result_list thead th.sorted {
+    background: #c8e6c9;
+}

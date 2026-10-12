@@ -1,0 +1,27 @@
+/* Sortable column header styling for all Django admin list pages */
+#result_list thead th a,
+#result_list thead th .text a,
+#result_list thead th .sortable {
+    color: #1b5e20 !important;
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+#result_list thead th a:hover {
+    color: #2e7d32 !important;
+    text-decoration-style: solid;
+}
+#result_list thead th.sortable a::after,
+#result_list thead th a::after {
+    content: " ⇅";
+    font-size: 11px;
+    opacity: 0.5;
+}
+#result_list thead th.sorted a::after {
+    content: "";
+}
+#result_list thead th {
+    background: #e8f5e9;
+}

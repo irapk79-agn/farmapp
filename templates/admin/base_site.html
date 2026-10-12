@@ -1,4 +1,10 @@
- {% extends "admin/base.html" %}
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'admin/custom_admin.css' %}">
+{% endblock %}
 
 {% block branding %}
 <h1 id="site-name">
@@ -8,18 +14,12 @@
 
 {% block userlinks %}
     <a href="/dashboard/" style="font-weight:600;">🏠 View Dashboard</a> /
-    {% if user.is_active and user.is_staff %}
-        {% url 'django-admindocs-docroot' as docsroot %}
-        {% if docsroot %}
-            <a href="{{ docsroot }}">Documentation</a> /
-        {% endif %}
-    {% endif %}
     {% if user.has_usable_password %}
-    <a href="{% url 'admin:password_change' %}">Change password</a> /
+        <a href="{% url 'admin:password_change' %}">Change password</a> /
     {% endif %}
-    <form id="logout-form" method="post" action="{% url 'admin:logout' %}" style="display:inline;">
+    <form method="post" action="{% url 'admin:logout' %}" style="display:inline;">
         {% csrf_token %}
-        <button type="submit" style="background:none;border:none;color:inherit;cursor:pointer;font:inherit;padding:0;">
+        <button type="submit" style="background:none; border:none; color:inherit; cursor:pointer; font:inherit; padding:0;">
             Log out
         </button>
     </form>
