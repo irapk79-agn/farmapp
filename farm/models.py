@@ -141,6 +141,7 @@ class Row(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PLOWING')
     planted_date = models.DateField(null=True, blank=True)
     harvest_date = models.DateField(null=True, blank=True)
+    seeding_date = models.DateField(null=True, blank=True)
 
     class Meta:
         unique_together = ('block', 'row_number')
@@ -148,3 +149,38 @@ class Row(models.Model):
 
     def __str__(self):
         return f"B{self.block.block_number}-R{self.row_number} ({self.status})"
+    
+    def save(self, *args, **kwargs):
+        from django.utils import timezone
+        # Auto-stamp seeding_date if status is SEEDING and it's missing
+        if self.status == 'SEEDING' and not self.seeding_date:
+            self.seeding_date = timezone.now().date()
+        super().save(*args, **kwargs)
+
+class HarvestRecord(models.Model):
+    """
+    A permanent snapshot of a row at the time it was harvested.
+    Created automatically when a row's status is set to HARVESTED.
+    """
+    block = models.ForeignKey(Block, on_delete=models.CASCADE, related_name='harvest_records')
+    row_number = models.PositiveIntegerField()
+
+    plant_type = models.CharField(max_length=100, blank=True)
+    count_per_plantation = models.CharField(max_length=50, blank=True)
+    yield_per_plantation = models.CharField(max_length=50, blank=True)
+    duration = models.CharField(max_length=30, blank=True)
+    rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    seeding_date = models.DateField(null=True, blank=True)
+    days_to_harvest = models.PositiveIntegerField(null=True, blank=True)
+
+    # Snapshot of computed revenue at harvest time (so it doesn't change if rate changes later)
+    revenue = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
+    harvest_date = models.DateField(auto_now_add=True)
+    harvested_by = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        ordering = ['-harvest_date', 'block__block_number', 'row_number']
+
+    def __str__(self):
+        return f"B{self.block.block_number}-R{self.row_number} harvested {self.harvest_date}"

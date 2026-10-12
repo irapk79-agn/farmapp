@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import Owner, Block, Row
+from .models import Owner, Block, Row, HarvestRecord
 
 @admin.register(Owner)
 class OwnerAdmin(admin.ModelAdmin):
@@ -11,7 +12,7 @@ class RowInline(admin.TabularInline):
     fields = (
         'row_number', 'plant_type', 'status',
         'count_per_plantation', 'yield_per_plantation', 'rate', 'duration',
-        'planted_date', 'harvest_date',
+        'seeding_date','planted_date', 'harvest_date',
     )
 @admin.register(Block)
 class BlockAdmin(admin.ModelAdmin):
@@ -51,3 +52,25 @@ admin.site.site_header = "Farm Administration"
 admin.site.site_title = "Farm Admin"
 admin.site.index_title = "Manage Blocks, Rows, and Owners"
 admin.site.site_url = "/dashboard/"
+
+@admin.register(HarvestRecord)
+class HarvestRecordAdmin(admin.ModelAdmin):
+    list_display = ('block', 'row_number', 'plant_type',
+                    'seeding_date','yield_per_plantation', 'revenue', 'harvest_date', 'harvested_by')
+    list_filter = ('plant_type', 'harvest_date', 'block__owner')
+    search_fields = ('plant_type', 'block__block_number', 'harvested_by')
+    date_hierarchy = 'harvest_date'
+
+    readonly_fields = ('block', 'row_number', 'plant_type',
+                       'count_per_plantation', 'yield_per_plantation',
+                       'duration', 'rate', 'revenue',
+                       'seeding_date','harvest_date', 'harvested_by')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False   # read-only log
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser

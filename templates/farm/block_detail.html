@@ -72,7 +72,11 @@
                 <span class="owner-info" style="color:#e65100;">👤 No owner assigned</span>
             {% endif %}
         </h1>
-        <a class="back" href="{% url 'dashboard' %}">← Back</a>
+        <div>
+            <a class="back" href="{% url 'block_history' block.block_number %}"
+               style="margin-right:10px;">🌾 History</a>
+            <a class="back" href="{% url 'dashboard' %}">← Back</a>
+        </div>
     </header>
 
     {% if messages %}

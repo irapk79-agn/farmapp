@@ -112,23 +112,54 @@ def block_detail(request, block_number):
         rate_raw = request.POST.get('rate', '').strip()
 
         row = get_object_or_404(Row, id=row_id, block=block)
+        was_harvested = (row.status == 'HARVESTED')
+        old_status = row.status
+
+        # Apply the updates
         if new_status in dict(Row.STATUS_CHOICES):
             row.status = new_status
         row.plant_type = plant_type
         row.count_per_plantation = count_per
         row.yield_per_plantation = yield_per
         row.duration = duration
-        # Rate: empty string clears the field, otherwise parse as number
+
         if rate_raw == '':
             row.rate = None
         else:
+            from decimal import Decimal, InvalidOperation
             try:
-                from decimal import Decimal, InvalidOperation
                 row.rate = Decimal(rate_raw)
             except (InvalidOperation, ValueError):
                 messages.error(request, f'Invalid rate "{rate_raw}" for row {row.row_number}.')
                 return redirect('block_detail', block_number=block_number)
+
         row.save()
+
+        # --- Auto-create a HarvestRecord on transition into HARVESTED ---
+        if row.status == 'HARVESTED' and not was_harvested:
+            from .models import HarvestRecord
+            HarvestRecord.objects.create(
+                block=block,
+                row_number=row.row_number,
+                plant_type=row.plant_type,
+                count_per_plantation=row.count_per_plantation,
+                yield_per_plantation=row.yield_per_plantation,
+                duration=row.duration,
+                rate=row.rate,
+                revenue=row.revenue_per_plantation,
+                seeding_date=row.seeding_date,
+                days_to_harvest=days,
+                harvested_by=request.user.username,
+            )
+            messages.success(
+                request,
+                f'🌾 Row {row.row_number} harvested — history saved!'
+            )
+        else:
+            messages.success(request, f'Row {row.row_number} updated.')
+
+        return redirect('block_detail', block_number=block_number)
+
 
         messages.success(request, f'Row {row.row_number} updated.')
         return redirect('block_detail', block_number=block_number)
@@ -141,4 +172,25 @@ def block_detail(request, block_number):
         'status_choices': Row.STATUS_CHOICES,
         'duration_choices': DURATION_CHOICES,
         'can_edit': can_edit,
+    })
+@login_required
+def block_history(request, block_number):
+    from .models import HarvestRecord
+    block = get_object_or_404(Block, block_number=block_number)
+
+    # Permission: superuser, staff, or block owner
+    if not (request.user.is_superuser or request.user.is_staff):
+        owner = _owner_for_user(request.user)
+        if owner is None or block.owner_id != owner.id:
+            return HttpResponseForbidden("You don't have access to this block.")
+
+    records = HarvestRecord.objects.filter(block=block)
+
+    total_revenue = sum(float(r.revenue or 0) for r in records)
+
+    return render(request, 'farm/block_history.html', {
+        'block': block,
+        'records': records,
+        'total_revenue': total_revenue,
+        'record_count': records.count(),
     })

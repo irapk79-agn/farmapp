@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Block {{ block.block_number }} — Harvest History</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: #f5faf5;
+               margin: 0; padding: 16px; }
+        header { display: flex; justify-content: space-between; align-items: center;
+                 margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        h1 { color: #2e7d32; margin: 0; font-size: 20px; }
+        a.back { color: #2e7d32; text-decoration: none; font-size: 14px;
+                 padding: 8px 14px; border: 1px solid #2e7d32; border-radius: 6px; }
+        a.back:hover { background: #2e7d32; color: white; }
+        .summary { background: white; border-radius: 10px; padding: 14px 18px;
+                   margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+                   display: flex; gap: 32px; flex-wrap: wrap; }
+        .summary .item { font-size: 12px; color: #888; text-transform: uppercase;
+                         letter-spacing: 0.5px; font-weight: 600; }
+        .summary .item b { display: block; font-size: 22px; color: #2e7d32;
+                            margin-top: 4px; text-transform: none; letter-spacing: 0; }
+        .record { background: white; border-radius: 10px; padding: 14px 16px;
+                  margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        .record-head { display: flex; justify-content: space-between; align-items: center;
+                       margin-bottom: 12px; padding-bottom: 10px;
+                       border-bottom: 1px solid #e8f5e9; flex-wrap: wrap; gap: 6px; }
+        .record-head .title { font-weight: 700; color: #1b5e20; font-size: 15px; }
+        .record-head .date { font-size: 12px; color: #888; }
+        .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        @media (min-width: 640px) {
+            .fields { grid-template-columns: 1fr 1fr 1fr; }
+        }
+        .field .label { font-size: 10px; color: #999; text-transform: uppercase;
+                        letter-spacing: 0.5px; font-weight: 700; }
+        .field .value { color: #333; font-weight: 500; margin-top: 3px;
+                        font-size: 14px; }
+        .revenue-value { color: #1b5e20; font-weight: 700; font-size: 17px; }
+        .empty { background: white; padding: 50px 30px; border-radius: 10px;
+                 text-align: center; color: #888; }
+        .empty .icon { font-size: 40px; display: block; margin-bottom: 12px; }
+        .empty .title { font-weight: 600; color: #555; margin-bottom: 6px; font-size: 15px; }
+        .empty .hint { font-size: 13px; font-style: italic; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🌾 Block {{ block.block_number }} — Harvest History</h1>
+        <a class="back" href="{% url 'block_detail' block.block_number %}">← Back to rows</a>
+    </header>
+
+    {% if records %}
+        <div class="summary">
+            <div class="item">Total Harvests<b>{{ record_count }}</b></div>
+            <div class="item">Total Revenue<b>₹{{ total_revenue|floatformat:2 }}</b></div>
+        </div>
+
+        {% for rec in records %}
+            <div class="record">
+                <div class="record-head">
+                    <span class="title">
+                        Row {{ rec.row_number }} · {{ rec.plant_type|default:"(unknown)" }}
+                    </span>
+                    <span class="date">
+                        📅 {{ rec.harvest_date|date:"Y-m-d" }}
+                        {% if rec.harvested_by %} · 👤 {{ rec.harvested_by }}{% endif %}
+                    </span>
+                </div>
+                
+                <div class="fields">
+                    <div class="field">
+                        <div class="label">Seeding Date</div>
+                        <div class="value">📅 {{ rec.seeding_date|date:"Y-m-d"|default:"—" }}</div>
+                    </div>
+                    <div class="field">
+                        <div class="label">Days to Harvest</div>
+                        <div class="value">
+                            {% if rec.days_to_harvest %}
+                                <b style="color:#2e7d32;">{{ rec.days_to_harvest }} days</b>
+                            {% else %}
+                                —
+                            {% endif %}
+                        </div>
+                    </div>
+                <div class="fields">
+                    <div class="field">
+                        <div class="label">Count / Plantation</div>
+                        <div class="value">{{ rec.count_per_plantation|default:"—" }}</div>
+                    </div>
+                    <div class="field">
+                        <div class="label">Yield / Plantation</div>
+                        <div class="value">{{ rec.yield_per_plantation|default:"—" }}</div>
+                    </div>
+                    <div class="field">
+                        <div class="label">Duration</div>
+                        <div class="value">{{ rec.duration|default:"—" }}</div>
+                    </div>
+                    <div class="field">
+                        <div class="label">Rate</div>
+                        <div class="value">{% if rec.rate %}₹{{ rec.rate }}{% else %}—{% endif %}</div>
+                    </div>
+                    <div class="field" style="grid-column: 1 / -1;">
+                        <div class="label">Revenue at Harvest</div>
+                        <div class="value revenue-value">
+                            {% if rec.revenue %}₹{{ rec.revenue|floatformat:2 }}{% else %}—{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty">
+            <span class="icon">🌱</span>
+            <div class="title">No harvests recorded yet</div>
+            <div class="hint">History appears here automatically when a row is marked "Harvested".</div>
+        </div>
+    {% endif %}
+</body>
+</html>
