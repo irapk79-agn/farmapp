@@ -34,7 +34,7 @@ if not DEBUG:
     ALLOWED_HOSTS.append('paari.pythonanywhere.com')
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://imaginary-tray-negative.ngrok-free.dev', 'https://paari.pythonanywhere.com'
+    'https://paari.pythonanywhere.com'
 ]
 
 # Application definition
