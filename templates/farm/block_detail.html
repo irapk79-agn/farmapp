@@ -134,6 +134,22 @@
                         <label>Revenue / Plantation</label>
                         <span class="revenue-value revenue-live">{{ row.revenue_display }}</span>
                     </div>
+                    
+                    <div class="field">
+                        <label>Seeding Date (auto)</label>
+                        <span class="value" style="display:block; padding:6px 0; color:#555;">
+                            {% if row.seeding_date %}📅 {{ row.seeding_date|date:"Y-m-d" }}{% else %}—{% endif %}
+                        </span>
+                    </div>
+
+                    <div class="field">
+                        <label>Days Since Seeding</label>
+                        <span class="value">
+                            {% if row.days_since_seeding is not None %}
+                                <b style="color:#2e7d32;">{{ row.days_since_seeding }} days</b>
+                            {% else %}—{% endif %}
+                        </span>
+                    </div>
 
                     <div class="field">
                         <label>Duration</label>
@@ -193,6 +209,21 @@
                         <label>Revenue / Plantation</label>
                         <span class="revenue-value">{{ row.revenue_display }}</span>
                     </div>
+                 
+                    <div class="field">
+                        <label>Seeding Date</label>
+                        <span class="value">
+                            {% if row.seeding_date %}📅 {{ row.seeding_date|date:"Y-m-d" }}{% else %}—{% endif %}
+                        </span>
+                    </div>
+                    <div class="field">
+                        <label>Days Since Seeding</label>
+                        <span class="value">
+                            {% if row.days_since_seeding is not None %}
+                                <b style="color:#2e7d32;">{{ row.days_since_seeding }} days</b>
+                            {% else %}—{% endif %}
+                        </span>
+                    </div>                      
 
                     <div class="field">
                         <label>Duration</label>

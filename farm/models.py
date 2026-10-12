@@ -135,6 +135,13 @@ class Row(models.Model):
                 return icon
         return '🌱' 
 
+    @property
+    def days_since_seeding(self):
+        from django.utils import timezone
+        if not self.seeding_date:
+            return None
+        return (timezone.now().date() - self.seeding_date).days
+
     block = models.ForeignKey(Block, on_delete=models.CASCADE, related_name='rows')
     row_number = models.PositiveIntegerField()
     plant_type = models.CharField(max_length=100, blank=True)
