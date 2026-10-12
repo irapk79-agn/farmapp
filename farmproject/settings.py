@@ -28,10 +28,10 @@ SECRET_KEY = "django-insecure-&xxm4)oh+1n^tj1x%z(df!#d(zh#3srd%^x(t*g_d4e7g+ob7l
 #DEBUG = False
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'paari.pythonanywhere.com']
 
 if not DEBUG:
-    ALLOWED_HOSTS.append('yourusername.pythonanywhere.com')
+    ALLOWED_HOSTS.append('paari.pythonanywhere.com')
 
 CSRF_TRUSTED_ORIGINS = [
     'https://imaginary-tray-negative.ngrok-free.dev', 'https://paari.pythonanywhere.com'
