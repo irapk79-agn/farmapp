@@ -1,0 +1,154 @@
+{% load calendar_extras %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Harvest Calendar — {{ month_name }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: system-ui, -apple-system, sans-serif;
+               background: #f5faf5; margin: 0; padding: 16px; }
+        header { display: flex; justify-content: space-between; align-items: center;
+                 margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        h1 { color: #2e7d32; margin: 0; font-size: 20px; }
+        a.back { color: #2e7d32; text-decoration: none; font-size: 14px;
+                 padding: 8px 14px; border: 1px solid #2e7d32; border-radius: 6px; }
+        a.back:hover { background: #2e7d32; color: white; }
+
+        .nav { display: flex; justify-content: space-between; align-items: center;
+               background: white; border-radius: 10px; padding: 12px 16px;
+               margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        .nav a { color: #2e7d32; text-decoration: none; font-weight: 600;
+                 font-size: 14px; padding: 6px 12px; border-radius: 6px; }
+        .nav a:hover { background: #e8f5e9; }
+        .nav .title { font-size: 18px; font-weight: 700; color: #1b5e20; }
+
+        .summary { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+        .summary .item { background: white; padding: 12px 18px; border-radius: 8px;
+                         box-shadow: 0 1px 4px rgba(0,0,0,0.06); font-size: 12px;
+                         color: #888; text-transform: uppercase; letter-spacing: 0.5px;
+                         font-weight: 600; }
+        .summary .item b { display: block; font-size: 22px; color: #2e7d32;
+                           margin-top: 4px; text-transform: none;
+                           letter-spacing: 0; font-weight: 700; }
+
+        .calendar { background: white; border-radius: 12px; padding: 12px;
+                    box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        .weekdays { display: grid; grid-template-columns: repeat(7, 1fr);
+                    gap: 6px; margin-bottom: 6px; }
+        .weekdays > div { text-align: center; font-size: 11px; font-weight: 700;
+                          color: #666; text-transform: uppercase;
+                          letter-spacing: 0.5px; padding: 6px 0; }
+        .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+        .day { aspect-ratio: 1 / 1; border-radius: 8px; padding: 6px;
+               background: #fafafa; border: 1px solid #eee;
+               display: flex; flex-direction: column; justify-content: space-between;
+               overflow: hidden; }
+        .day.empty { background: transparent; border: none; }
+        .day.has-harvest { background: #e8f5e9; border-color: #81c784; }
+        .day.today { outline: 2px solid #2e7d32; outline-offset: -2px; }
+        .day .num { font-size: 13px; font-weight: 700; color: #555; }
+        .day.today .num { color: #1b5e20; }
+        .day .badge { font-size: 10px; font-weight: 700; color: #1b5e20;
+                      background: #c8e6c9; padding: 2px 6px; border-radius: 10px;
+                      align-self: flex-start; }
+        .day .revenue { font-size: 10px; color: #2e7d32; font-weight: 600;
+                        text-align: right; }
+
+        .detail { margin-top: 24px; }
+        .detail h2 { font-size: 16px; color: #1b5e20; margin: 0 0 12px; }
+        .detail-group { margin-bottom: 20px; }
+        .detail-date { font-weight: 700; color: #2e7d32; font-size: 14px;
+                       margin-bottom: 8px; padding-bottom: 4px;
+                       border-bottom: 2px solid #e8f5e9; }
+        .detail-record { background: white; border-radius: 8px; padding: 10px 12px;
+                         margin-bottom: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                         display: flex; justify-content: space-between;
+                         align-items: center; flex-wrap: wrap; gap: 8px; }
+        .detail-record .left { font-size: 13px; }
+        .detail-record .block-info { font-weight: 700; color: #1b5e20; }
+        .detail-record .right { font-size: 13px; color: #2e7d32;
+                                font-weight: 700; white-space: nowrap; }
+        .empty-state { text-align: center; padding: 40px; color: #888;
+                       background: white; border-radius: 10px; margin-top: 24px; }
+        .empty-state .icon { font-size: 40px; display: block; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>📅 Harvest Calendar</h1>
+        <a class="back" href="{% url 'dashboard' %}">← Dashboard</a>
+    </header>
+
+    <div class="nav">
+        <a href="?year={{ prev_year }}&month={{ prev_month }}">← Prev</a>
+        <span class="title">{{ month_name }}</span>
+        <a href="?year={{ next_year }}&month={{ next_month }}">Next →</a>
+    </div>
+
+    <div class="summary">
+        <div class="item">Harvests<b>{{ month_total_records }}</b></div>
+        <div class="item">Revenue<b>₹{{ month_total_revenue|floatformat:2 }}</b></div>
+    </div>
+
+    <div class="calendar">
+        <div class="weekdays">
+            <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div>
+            <div>Fri</div><div>Sat</div><div>Sun</div>
+        </div>
+        <div class="days">
+            {% for week in month_days %}
+                {% for day in week %}
+                    {% if day == 0 %}
+                        <div class="day empty"></div>
+                    {% else %}
+                        {% with day_recs=records_by_day|get_item:day %}
+                            {% if day_recs %}
+                                <div class="day has-harvest {% if day == today_day %}today{% endif %}">
+                                    <div class="num">{{ day }}</div>
+                                    <div class="badge">{{ day_recs|length }} 🌾</div>
+                                </div>
+                            {% else %}
+                                <div class="day {% if day == today_day %}today{% endif %}">
+                                    <div class="num">{{ day }}</div>
+                                </div>
+                            {% endif %}
+                        {% endwith %}
+                    {% endif %}
+                {% endfor %}
+            {% endfor %}
+        </div>
+    </div>
+
+    {% if month_total_records > 0 %}
+        <div class="detail">
+            <h2>🌾 Harvests in {{ month_name }}</h2>
+            {% for day, recs in records_by_day.items %}
+                <div class="detail-group">
+                    <div class="detail-date">
+                        📅 {{ year }}-{{ month|stringformat:"02d" }}-{{ day|stringformat:"02d" }}
+                        — {{ recs|length }} harvest{{ recs|length|pluralize }}
+                    </div>
+                    {% for rec in recs %}
+                        <div class="detail-record">
+                            <div class="left">
+                                <span class="block-info">Block {{ rec.block.block_number }} · Row {{ rec.row_number }}</span>
+                                — {{ rec.plant_type|default:"(unknown)" }}
+                                {% if rec.yield_per_plantation %} · {{ rec.yield_per_plantation }}{% endif %}
+                            </div>
+                            <div class="right">
+                                {% if rec.revenue %}₹{{ rec.revenue|floatformat:2 }}{% else %}—{% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <span class="icon">🌱</span>
+            No harvests recorded in {{ month_name }}.
+        </div>
+    {% endif %}
+</body>
+</html>

@@ -22,6 +22,7 @@
         .swatch.allocated { background: #c8e6c9; border: 1px solid #81c784; }
         .swatch.free      { background: #fff3e0; border: 1px solid #ffcc80; }
         .swatch.hidden    { background: #f5f5f5; border: 1px solid #e0e0e0; }
+        .swatch.cultivating { background: #e3f2fd; border: 1px solid #64b5f6; }
 
         .grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; max-width: 720px; }
         .cell { aspect-ratio: 1; border-radius: 6px;
@@ -33,6 +34,8 @@
         .cell.allocated  { background: #c8e6c9; color: #1b5e20; border: 1px solid #81c784; }
         .cell.allocated:hover { background: #a5d6a7; }
         .cell.free       { background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
+        .cell.cultivating { background: #e3f2fd; color: #0d47a1; border: 1px solid #64b5f6; }
+        .cell.cultivating:hover { background: #bbdefb; } 
         .cell.free:hover { background: #ffe0b2; }
     </style>
 </head>
@@ -43,7 +46,13 @@
         {% if request.user.is_superuser or request.user.is_staff %}
             <a href="/admin/" style="color:#2e7d32; text-decoration:none; font-size:14px; font-weight:600;">
                 ⚙️ Admin Panel
+
             </a>
+
+            <a href="{% url 'harvest_calendar' %}"
+           style="color:#2e7d32; text-decoration:none; font-size:14px; font-weight:600;">
+            📅 Harvest Calendar
+           </a>
         {% endif %}
         <a class="logout" href="{% url 'logout' %}">Logout</a>
     </div>
@@ -53,6 +62,9 @@
         <div class="stat">My Blocks<b>{{ total_blocks }}</b></div>
         <div class="stat allocated">Allocated<b>{{ allocated_count }}</b></div>
         <div class="stat free">Free<b>{{ free_count }}</b></div>
+        <div class="stat" style="background:#e3f2fd;">
+        In Cultivation (unowned)<b style="color:#0d47a1;">{{ cultivating_unowned }}</b>
+        </div> 
         <div class="stat">Plowing<b>{{ status_counts.PLOWING }}</b></div>
         <div class="stat">Seeding<b>{{ status_counts.SEEDING }}</b></div>
         <div class="stat">Watering<b>{{ status_counts.WATERING }}</b></div>
@@ -62,32 +74,37 @@
 
     <div class="legend">
         <span><i class="swatch allocated"></i> Allocated to an owner</span>
+        <span><i class="swatch cultivating"></i> In cultivation, no owner</span> 
         <span><i class="swatch free"></i> Free (unassigned)</span>
         <span><i class="swatch hidden"></i> Not visible to you</span>
     </div>
 
     
 <div class="grid">
-    {% for num, block in grid %}
+    {% for num, block, state in grid %}
         {% if block %}
-            {% if block.owner %}
+            {% if state == 'allocated' %}
                 <a class="cell allocated" href="{% url 'block_detail' num %}"
                    title="Block {{ num }} — Owner: {{ block.owner.name }}"
                    style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
                     <span style="font-weight:700;">{{ num }}</span>
-                    <span style="font-size:8px; color:#1b5e20; margin-top:2px; max-width:100%;
-                                 overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    <span style="font-size:8px; color:#1b5e20; margin-top:2px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                         {{ block.owner.name }}
                     </span>
                 </a>
-            {% else %}
-                <a class="cell free" href="{% url 'block_detail' num %}"
-                   title="Block {{ num }} — Free (no owner)"
+            {% elif state == 'cultivating' %}
+                <a class="cell cultivating" href="{% url 'block_detail' num %}"
+                   title="Block {{ num }} — In cultivation, no owner assigned"
                    style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
                     <span style="font-weight:700;">{{ num }}</span>
-                    <span style="font-size:8px; color:#e65100; margin-top:2px;">
-                        free
-                    </span>
+                    <span style="font-size:9px; color:#0d47a1; margin-top:2px;">🌱 no owner</span>
+                </a>
+            {% else %}
+                <a class="cell free" href="{% url 'block_detail' num %}"
+                   title="Block {{ num }} — Free (no owner, no crops)"
+                   style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                    <span style="font-weight:700;">{{ num }}</span>
+                    <span style="font-size:8px; color:#e65100; margin-top:2px;">free</span>
                 </a>
             {% endif %}
         {% else %}

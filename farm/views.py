@@ -4,6 +4,9 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import HttpResponseForbidden
 from .models import Block, Row, DURATION_CHOICES
+from datetime import date, timedelta
+from calendar import Calendar
+from django.db.models import Sum, Count
 
 
 def home(request):
@@ -39,6 +42,7 @@ def _owner_for_user(user):
     from .models import Owner
     return Owner.objects.filter(name__iexact=user.username).first()
 
+
 @login_required
 def dashboard(request):
     if request.user.is_superuser or request.user.is_staff:
@@ -52,13 +56,27 @@ def dashboard(request):
             qs = Block.objects.filter(owner=owner).prefetch_related('rows')
             visible_blocks = {b.block_number: b for b in qs}
 
-    # Build a list of (number, block_or_None) for all 100 slots
+    # Annotate each block with a 'state' key: allocated | cultivating | free
     grid = []
     for n in range(1, 101):
-        grid.append((n, visible_blocks.get(n)))
+        block = visible_blocks.get(n)
+        state = None
+        if block is not None:
+            if block.owner_id:
+                state = 'allocated'
+            else:
+                # Check if any row has moved beyond PLOWING
+                active = block.rows.exclude(status='PLOWING').exists()
+                state = 'cultivating' if active else 'free'
+        grid.append((n, block, state))
 
-    # Summary counts — only on visible blocks
-    visible_qs = Block.objects.filter(block_number__in=[n for n, b in grid if b])
+    # Summary counts (land-wide)
+    total_blocks_land = 100
+    allocated_count = Block.objects.filter(owner__isnull=False).count()
+    free_count = total_blocks_land - allocated_count
+
+    # Status counts (visible blocks only)
+    visible_qs = Block.objects.filter(block_number__in=[n for n, b, _ in grid if b])
     rows_qs = Row.objects.filter(block__in=visible_qs)
     status_counts = {
         'PLOWING': rows_qs.filter(status='PLOWING').count(),
@@ -68,10 +86,8 @@ def dashboard(request):
         'HARVESTED': rows_qs.filter(status='HARVESTED').count(),
     }
 
-    # Land-wide allocation counts (all 100 blocks)
-    total_blocks_land = 100
-    allocated_count = Block.objects.filter(owner__isnull=False).count()
-    free_count = total_blocks_land - allocated_count
+    # NEW: count blocks that are cultivating but unowned
+    cultivating_unowned = sum(1 for _, b, s in grid if s == 'cultivating')
 
     context = {
         'grid': grid,
@@ -79,9 +95,9 @@ def dashboard(request):
         'total_blocks': visible_qs.count(),
         'allocated_count': allocated_count,
         'free_count': free_count,
+        'cultivating_unowned': cultivating_unowned,
     }
     return render(request, 'farm/dashboard.html', context)
-
 
 @login_required
 def block_detail(request, block_number):
@@ -194,3 +210,69 @@ def block_history(request, block_number):
         'total_revenue': total_revenue,
         'record_count': records.count(),
     })
+@login_required
+def harvest_calendar(request):
+    from .models import HarvestRecord
+
+    # Parse year/month from URL or default to today
+    today = date.today()
+    try:
+        year = int(request.GET.get('year', today.year))
+        month = int(request.GET.get('month', today.month))
+        if not (1 <= month <= 12):
+            raise ValueError
+    except (ValueError, TypeError):
+        year, month = today.year, today.month
+
+    # Determine which blocks this user can see
+    if request.user.is_superuser or request.user.is_staff:
+        visible_blocks = Block.objects.all()
+    else:
+        owner = _owner_for_user(request.user)
+        visible_blocks = Block.objects.filter(owner=owner) if owner else Block.objects.none()
+
+    # Pull harvests for the visible month
+    records = HarvestRecord.objects.filter(
+        block__in=visible_blocks,
+        harvest_date__year=year,
+        harvest_date__month=month,
+    ).order_by('harvest_date', 'block__block_number', 'row_number')
+
+    # Group records by day
+    records_by_day = {}
+    for rec in records:
+        records_by_day.setdefault(rec.harvest_date.day, []).append(rec)
+
+    # Build the calendar grid (weeks of days, Mon=0 ... Sun=6)
+    cal = Calendar(firstweekday=0)  # 0 = Monday
+    month_days = cal.monthdayscalendar(year, month)
+
+    # Month totals
+    month_total_records = records.count()
+    month_total_revenue = sum(float(r.revenue or 0) for r in records)
+
+    # Prev / next month navigation
+    if month == 1:
+        prev_year, prev_month = year - 1, 12
+    else:
+        prev_year, prev_month = year, month - 1
+    if month == 12:
+        next_year, next_month = year + 1, 1
+    else:
+        next_year, next_month = year, month + 1
+
+    context = {
+        'year': year,
+        'month': month,
+        'month_name': date(year, month, 1).strftime('%B %Y'),
+        'month_days': month_days,
+        'records_by_day': records_by_day,
+        'month_total_records': month_total_records,
+        'month_total_revenue': month_total_revenue,
+        'prev_year': prev_year,
+        'prev_month': prev_month,
+        'next_year': next_year,
+        'next_month': next_month,
+        'today_day': today.day if (today.year == year and today.month == month) else None,
+    }
+    return render(request, 'farm/harvest_calendar.html', context)
