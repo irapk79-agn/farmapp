@@ -1,0 +1,56 @@
+classDiagram
+    class Owner {
+        +int id
+        +string name
+        +string phone
+        +string email
+    }
+
+    class Block {
+        +int id
+        +int block_number
+        +FK owner
+        +text notes
+        +int row_count()*
+    }
+
+    class Row {
+        +int id
+        +FK block
+        +int row_number
+        +string plant_type
+        +string status
+        +string count_per_plantation
+        +string yield_per_plantation
+        +string duration
+        +decimal rate
+        +date seeding_date
+        +date planted_date
+        +date harvest_date
+        +string plant_icon()*
+        +float numeric_yield()*
+        +float revenue_per_plantation()*
+        +string revenue_display()*
+        +int days_since_seeding()*
+        +void save()
+    }
+
+    class HarvestRecord {
+        +int id
+        +FK block
+        +int row_number
+        +string plant_type
+        +string count_per_plantation
+        +string yield_per_plantation
+        +string duration
+        +decimal rate
+        +decimal revenue
+        +date seeding_date
+        +int days_to_harvest
+        +date harvest_date
+        +string harvested_by
+    }
+
+    Owner "1" --> "0..*" Block : owns
+    Block "1" --> "0..*" Row : contains (usually 20)
+    Block "1" --> "0..*" HarvestRecord : has history
