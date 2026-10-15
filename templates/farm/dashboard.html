@@ -37,6 +37,115 @@
         .cell.cultivating { background: #e3f2fd; color: #0d47a1; border: 1px solid #64b5f6; }
         .cell.cultivating:hover { background: #bbdefb; } 
         .cell.free:hover { background: #ffe0b2; }
+/* ============================================
+   MOBILE OPTIMIZATIONS (screens < 640px wide)
+   ============================================ */
+  @media (max-width: 640px) {
+
+     /* --- Body & Header --- */
+     body { padding: 12px; }
+
+     header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 16px;
+     }
+
+     h1 {
+        font-size: 18px;
+        line-height: 1.2;
+     }
+
+     /* Stack header links into a clean row below the title */
+     header > div {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        width: 100%;
+        justify-content: flex-start;
+     }
+
+     header > div a {
+        font-size: 13px;
+        padding: 6px 10px;
+        background: #e8f5e9;
+        border-radius: 6px;
+        white-space: nowrap;
+     }
+
+     /* --- Stats tiles: 2 columns, uniform --- */
+     .stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 16px;
+     }
+
+     .stat {
+        padding: 10px 12px;
+        font-size: 10px;
+        letter-spacing: 0.3px;
+        line-height: 1.3;
+        min-height: 62px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+     }
+
+     .stat b {
+        font-size: 22px;
+        margin-top: 4px;
+     }
+
+     /* --- Legend: stack vertically --- */
+     .legend {
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 12px;
+        font-size: 12px;
+     }
+
+     .legend span {
+        white-space: nowrap;
+     }
+
+     /* --- Grid: 5 columns, tighter cells --- */
+     .grid {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 4px;
+        max-width: 100%;
+    }
+
+    .cell {
+        font-size: 11px;
+        border-radius: 5px;
+        min-height: 0;
+    }
+
+    /* Hide small labels inside cells on mobile (owner names, "free") */
+    .cell span[style*="font-size:8px"],
+    .cell span[style*="font-size:9px"] {
+        display: none;
+    }
+
+    /* Keep just the block number centered */
+    .cell span:first-child {
+        font-size: 12px;
+    }
+
+    /* --- Logout link smaller --- */
+    .logout {
+        font-size: 13px;
+    }
+ }
+
+ /* Extra-narrow phones (< 380px wide) — even tighter */
+ @media (max-width: 380px) {
+    .stats { grid-template-columns: 1fr; }
+    .grid { grid-template-columns: repeat(5, 1fr); gap: 3px; }
+    .cell span:first-child { font-size: 11px; }
+ }
     </style>
 </head>
 <body>

@@ -72,6 +72,30 @@
         .empty-state { text-align: center; padding: 40px; color: #888;
                        background: white; border-radius: 10px; margin-top: 24px; }
         .empty-state .icon { font-size: 40px; display: block; margin-bottom: 10px; }
+    @media (max-width: 640px) {
+    body { padding: 12px; }
+    header { flex-direction: column; align-items: flex-start; gap: 10px; }
+    h1 { font-size: 18px; }
+
+    .nav { padding: 8px 10px; font-size: 13px; }
+    .nav .title { font-size: 15px; }
+    .nav a { padding: 6px 8px; }
+
+    .summary { gap: 8px; }
+    .summary .item { padding: 10px 14px; flex: 1; }
+    .summary .item b { font-size: 20px; }
+
+    .calendar { padding: 8px; }
+    .weekdays > div { font-size: 9px; letter-spacing: 0; padding: 4px 0; }
+    .days { gap: 4px; }
+    .day { padding: 4px; border-radius: 5px; }
+    .day .num { font-size: 11px; }
+    .day .badge { font-size: 9px; padding: 1px 4px; }
+    .day .revenue { display: none; }
+
+    .detail-record { font-size: 12px; padding: 8px; }
+    .detail-record .left, .detail-record .right { font-size: 12px; }
+}
     </style>
 </head>
 <body>
