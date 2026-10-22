@@ -156,13 +156,47 @@ class Row(models.Model):
 
     def __str__(self):
         return f"B{self.block.block_number}-R{self.row_number} ({self.status})"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Remember the original status when the object is loaded from the database
+        self._original_status = self.status
     
     def save(self, *args, **kwargs):
         from django.utils import timezone
-        # Auto-stamp seeding_date if status is SEEDING and it's missing
-        if self.status == 'SEEDING' and not self.seeding_date:
+        
+        # 1. Auto-stamp seeding_date ONLY when transitioning INTO 'SEEDING' from another status
+        if self.status == 'SEEDING' and self._original_status != 'SEEDING':
             self.seeding_date = timezone.now().date()
+
+        # 2. Detect if we are transitioning INTO 'HARVESTED'
+        is_new_harvest = (self.status == 'HARVESTED' and self._original_status != 'HARVESTED')
+
         super().save(*args, **kwargs)
+
+        # 3. Create the HarvestRecord automatically
+        if is_new_harvest:
+            from .models import HarvestRecord # Avoid circular import
+            days = None
+            if self.seeding_date:
+                days = (timezone.now().date() - self.seeding_date).days
+                
+            HarvestRecord.objects.create(
+                block=self.block,
+                row_number=self.row_number,
+                plant_type=self.plant_type,
+                count_per_plantation=self.count_per_plantation,
+                yield_per_plantation=self.yield_per_plantation,
+                duration=self.duration,
+                rate=self.rate,
+                revenue=self.revenue_per_plantation,
+                seeding_date=self.seeding_date,
+                days_to_harvest=days,
+                harvested_by="System/Admin",
+            )
+            
+        # 4. Update the remembered status so subsequent saves work correctly
+        self._original_status = self.status
 
 class HarvestRecord(models.Model):
     """
@@ -185,6 +219,12 @@ class HarvestRecord(models.Model):
 
     harvest_date = models.DateField(auto_now_add=True)
     harvested_by = models.CharField(max_length=100, blank=True)
+    receipt = models.FileField(
+    upload_to='receipts/', 
+    null=True, 
+    blank=True, 
+    help_text="Upload a photo or PDF of the harvest receipt."
+    )
 
     class Meta:
         ordering = ['-harvest_date', 'block__block_number', 'row_number']

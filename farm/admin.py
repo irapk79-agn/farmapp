@@ -20,6 +20,7 @@ class BlockAdmin(admin.ModelAdmin):
     list_filter = ('owner',)
     search_fields = ('block_number', 'owner__name')
     inlines = [RowInline]
+    save_on_top = True
     #actions = [assign_owner_action]
     change_list_template = "admin/block_changelist.html" 
 
@@ -64,7 +65,7 @@ class HarvestRecordAdmin(admin.ModelAdmin):
     readonly_fields = ('block', 'row_number', 'plant_type',
                        'count_per_plantation', 'yield_per_plantation',
                        'duration', 'rate', 'revenue',
-                       'seeding_date','harvest_date', 'harvested_by')
+                       'seeding_date','harvest_date', 'harvested_by', 'receipt' )
 
     def has_add_permission(self, request):
         return False

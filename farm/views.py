@@ -152,28 +152,10 @@ def block_detail(request, block_number):
         row.save()
 
         # --- Auto-create a HarvestRecord on transition into HARVESTED ---
-        if row.status == 'HARVESTED' and not was_harvested:
-            from .models import HarvestRecord
-            HarvestRecord.objects.create(
-                block=block,
-                row_number=row.row_number,
-                plant_type=row.plant_type,
-                count_per_plantation=row.count_per_plantation,
-                yield_per_plantation=row.yield_per_plantation,
-                duration=row.duration,
-                rate=row.rate,
-                revenue=row.revenue_per_plantation,
-                seeding_date=row.seeding_date,
-                days_to_harvest=days,
-                harvested_by=request.user.username,
-            )
-            messages.success(
-                request,
-                f'🌾 Row {row.row_number} harvested — history saved!'
-            )
+        if row.status == 'HARVESTED' and old_status != 'HARVESTED':
+            messages.success(request, f'🌾 Row {row.row_number} harvested — history saved!')
         else:
             messages.success(request, f'Row {row.row_number} updated.')
-
         return redirect('block_detail', block_number=block_number)
 
 
@@ -194,11 +176,32 @@ def block_history(request, block_number):
     from .models import HarvestRecord
     block = get_object_or_404(Block, block_number=block_number)
 
+    is_staff_or_admin = request.user.is_superuser or request.user.is_staff
     # Permission: superuser, staff, or block owner
     if not (request.user.is_superuser or request.user.is_staff):
         owner = _owner_for_user(request.user)
         if owner is None or block.owner_id != owner.id:
             return HttpResponseForbidden("You don't have access to this block.")
+
+    # Handle file upload
+    if request.method == 'POST':
+        if not is_staff_or_admin:
+            return HttpResponseForbidden("Only staff can upload receipts.")
+        
+        record_id = request.POST.get('record_id')
+        record = get_object_or_404(HarvestRecord, id=record_id, block=block)
+       
+        
+        
+        if request.FILES.get('receipt'):
+            record.receipt = request.FILES['receipt']
+            record.save()
+            messages.success(request, 'Receipt uploaded successfully!')
+        else:
+            messages.error(request, 'No file selected.')
+
+        return redirect('block_history', block_number=block_number)
+
 
     records = HarvestRecord.objects.filter(block=block)
 
@@ -209,6 +212,7 @@ def block_history(request, block_number):
         'records': records,
         'total_revenue': total_revenue,
         'record_count': records.count(),
+        'can_edit': is_staff_or_admin,
     })
 @login_required
 def harvest_calendar(request):

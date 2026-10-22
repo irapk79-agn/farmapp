@@ -46,6 +46,15 @@
 <body>
     <header>
         <h1>🌾 Block {{ block.block_number }} — Harvest History</h1>
+         {% if block.owner %}
+                <span style="font-size: 13px; color: #555;">
+                    👤 Owner: <b style="color: #2e7d32;">{{ block.owner.name }}</b>
+                </span>
+            {% else %}
+                <span style="font-size: 13px; color: #e65100;">
+                    👤 No owner assigned
+                </span>
+            {% endif %}
         <a class="back" href="{% url 'block_detail' block.block_number %}">← Back to rows</a>
     </header>
 
@@ -56,7 +65,7 @@
         </div>
 
         {% for rec in records %}
-            <div class="record">
+                        <div class="record">
                 <div class="record-head">
                     <span class="title">
                         Row {{ rec.row_number }} · {{ rec.plant_type|default:"(unknown)" }}
@@ -67,6 +76,41 @@
                     </span>
                 </div>
                 
+                <div class="fields">
+                    <!-- ... your existing fields (Seeding Date, Count, Yield, Revenue, etc.) ... -->
+                </div>
+
+                <!-- NEW: Receipt Section -->
+                <div style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed #ccc; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    
+                    <!-- Left Side: Upload Form (Staff Only) -->
+                    <div>
+                        {% if can_edit %}
+                            <form method="post" enctype="multipart/form-data" style="display: flex; gap: 10px; align-items: center; margin: 0;">
+                                {% csrf_token %}
+                                <input type="hidden" name="record_id" value="{{ rec.id }}">
+                                <input type="file" name="receipt" style="font-size: 13px; max-width: 200px;">
+                                <button type="submit" style="padding: 6px 12px; background: #2e7d32; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                                    ⬆️ Upload Receipt
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+
+                    <!-- Right Side: View/Download Link -->
+                    <div>
+                        {% if rec.receipt %}
+                            <a href="{{ rec.receipt.url }}" target="_blank" style="color: #1565c0; font-size: 13px; font-weight: 600; text-decoration: none; background: #e3f2fd; padding: 6px 12px; border-radius: 6px; border: 1px solid #90caf9;">
+                                📄 View / Download Receipt
+                            </a>
+                        {% elif not can_edit %}
+                            <span style="color: #888; font-size: 13px; font-style: italic;">
+                                No receipt uploaded yet.
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+               
                 <div class="fields">
                     <div class="field">
                         <div class="label">Seeding Date</div>
