@@ -16,13 +16,16 @@ class RowInline(admin.TabularInline):
     )
 @admin.register(Block)
 class BlockAdmin(admin.ModelAdmin):
-    list_display = ('block_number', 'owner', 'row_count')
-    list_filter = ('owner',)
+    list_display = ('block_number', 'owner','investment_amount', 'investment_mode', 'row_count')
+    list_filter = ('owner', 'investment_mode')
     search_fields = ('block_number', 'owner__name')
     inlines = [RowInline]
     save_on_top = True
     #actions = [assign_owner_action]
     change_list_template = "admin/block_changelist.html" 
+   
+     # Show the new financial fields in the edit form
+    fields = ('block_number', 'owner', 'notes', 'investment_amount', 'investment_mode')
 
     def row_count(self, obj):
         return obj.rows.count()

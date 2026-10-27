@@ -27,6 +27,22 @@ class Block(models.Model):
     owner = models.ForeignKey(Owner, on_delete=models.SET_NULL,
                               null=True, blank=True, related_name='blocks')
     notes = models.TextField(blank=True)
+    
+    # --- NEW FINANCIAL FIELDS ---
+    investment_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0.00,
+        help_text="Total amount invested in this block."
+    )
+    investment_mode = models.CharField(
+        max_length=20, blank=True,
+        choices=[
+            ('CASH', 'Cash'),
+            ('UPI', 'UPI'),
+            ('BANK', 'Bank Transfer'),
+            ('OTHER', 'Other'),
+        ]
+    )
+    # ----------------------------
 
     def __str__(self):
         return f"Block {self.block_number}"

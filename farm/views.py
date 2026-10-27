@@ -42,42 +42,43 @@ def _owner_for_user(user):
     from .models import Owner
     return Owner.objects.filter(name__iexact=user.username).first()
 
-
 @login_required
 def dashboard(request):
     if request.user.is_superuser or request.user.is_staff:
         qs = Block.objects.prefetch_related('rows')
         visible_blocks = {b.block_number: b for b in qs}
+        block_numbers = list(range(1, 101))  
     else:
         owner = _owner_for_user(request.user)
         if owner is None:
             visible_blocks = {}
+            block_numbers = [] # No owner, no blocks
+            
         else:
             qs = Block.objects.filter(owner=owner).prefetch_related('rows')
             visible_blocks = {b.block_number: b for b in qs}
+            block_numbers = [b.block_number for b in qs]   # Owners ONLY see their block numbers
 
-    # Annotate each block with a 'state' key: allocated | cultivating | free
     grid = []
-    for n in range(1, 101):
+    for n in block_numbers:
         block = visible_blocks.get(n)
         state = None
         if block is not None:
             if block.owner_id:
                 state = 'allocated'
             else:
-                # Check if any row has moved beyond PLOWING
                 active = block.rows.exclude(status='PLOWING').exists()
-                state = 'cultivating' if active else 'free'
+                state = 'cultivating' if active else 'free'  
         grid.append((n, block, state))
 
-    # Summary counts (land-wide)
     total_blocks_land = 100
     allocated_count = Block.objects.filter(owner__isnull=False).count()
     free_count = total_blocks_land - allocated_count
+    cultivating_unowned = sum(1 for _, b, s in grid if s == 'cultivating')
 
-    # Status counts (visible blocks only)
     visible_qs = Block.objects.filter(block_number__in=[n for n, b, _ in grid if b])
     rows_qs = Row.objects.filter(block__in=visible_qs)
+    
     status_counts = {
         'PLOWING': rows_qs.filter(status='PLOWING').count(),
         'SEEDING': rows_qs.filter(status='SEEDING').count(),
@@ -86,8 +87,45 @@ def dashboard(request):
         'HARVESTED': rows_qs.filter(status='HARVESTED').count(),
     }
 
-    # NEW: count blocks that are cultivating but unowned
-    cultivating_unowned = sum(1 for _, b, s in grid if s == 'cultivating')
+    # ==========================================
+    # NEW FINANCIAL LOGIC
+    # ==========================================
+    from .models import HarvestRecord
+    harvests = HarvestRecord.objects.filter(block__in=visible_qs).order_by('-harvest_date')
+    
+    total_investment = sum(float(b.investment_amount or 0) for b in visible_qs)
+    total_revenue = sum(float(h.revenue or 0) for h in harvests)
+    net_profit = total_revenue - total_investment
+
+    transactions = []
+    
+    # Add Investments
+    for b in visible_qs:
+        if b.investment_amount and b.investment_amount > 0:
+            transactions.append({
+                'date': None, 
+                'type': 'Investment',
+                'block': b.block_number,
+                'description': f"Investment via {b.get_investment_mode_display() or 'Unknown'}",
+                'amount': -float(b.investment_amount), 
+                'is_income': False
+            })
+            
+    # Add Harvests
+    for h in harvests:
+        if h.revenue and h.revenue > 0:
+            transactions.append({
+                'date': h.harvest_date,
+                'type': 'Harvest',
+                'block': h.block.block_number,
+                'description': f"{h.plant_type} (Row {h.row_number})",
+                'amount': float(h.revenue),
+                'is_income': True
+            })
+            
+    # Sort: Newest dates first. (Investments have date=None so they go to the top)
+    transactions.sort(key=lambda x: (str(x['date']), x['is_income']), reverse=True)
+    # ==========================================
 
     context = {
         'grid': grid,
@@ -96,9 +134,14 @@ def dashboard(request):
         'allocated_count': allocated_count,
         'free_count': free_count,
         'cultivating_unowned': cultivating_unowned,
+        
+        # Pass the financial variables to the template
+        'total_investment': total_investment,
+        'total_revenue': total_revenue,
+        'net_profit': net_profit,
+        'transactions': transactions,
     }
     return render(request, 'farm/dashboard.html', context)
-
 @login_required
 def block_detail(request, block_number):
     block = get_object_or_404(Block, block_number=block_number)
@@ -156,10 +199,6 @@ def block_detail(request, block_number):
             messages.success(request, f'🌾 Row {row.row_number} harvested — history saved!')
         else:
             messages.success(request, f'Row {row.row_number} updated.')
-        return redirect('block_detail', block_number=block_number)
-
-
-        messages.success(request, f'Row {row.row_number} updated.')
         return redirect('block_detail', block_number=block_number)
 
     rows = block.rows.all().order_by('row_number')
