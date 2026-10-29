@@ -29,9 +29,17 @@ class Block(models.Model):
     notes = models.TextField(blank=True)
     
     # --- NEW FINANCIAL FIELDS ---
-    investment_amount = models.DecimalField(
+    amount = models.DecimalField(
         max_digits=12, decimal_places=2, default=0.00,
         help_text="Total amount invested in this block."
+    )
+
+    transaction_type = models.CharField(
+        max_length=20, 
+        choices=[('FUNDING', 'Funding (In)'), ('EXPENSE', 'Expense (Out)')],
+        default='FUNDING',
+        verbose_name="Transaction Type",
+        help_text="Is this money received from the owner, or money spent on the farm?"
     )
     investment_mode = models.CharField(
         max_length=20, blank=True,
@@ -43,6 +51,18 @@ class Block(models.Model):
         ]
     )
     # ----------------------------
+    expense_category = models.CharField(
+        max_length=30, blank=True,
+        choices=[
+            ('SEEDS', 'Seeds'),
+            ('LABOR', 'Labor / Wages'),
+            ('FERTILIZER', 'Fertilizer / Pesticides'),
+            ('EQUIPMENT', 'Equipment'),
+            ('IRRIGATION', 'Irrigation / Water'),
+            ('OTHER', 'Other'),
+        ],
+        help_text="What was this investment used for? Only fill this if the transaction is an Expense."
+    )
 
     def __str__(self):
         return f"Block {self.block_number}"

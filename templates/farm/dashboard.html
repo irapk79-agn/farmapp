@@ -230,15 +230,24 @@
         
         <!-- Summary Tiles -->
         <div class="stats" style="margin-bottom: 16px;">
-            <div class="stat" style="background: #ffebee; border: 1px solid #ffcdd2;">
-                Total Investment<b style="color: #c62828;">₹{{ total_investment|floatformat:2 }}</b>
+            <div class="stat" style="background: #e3f2fd; border: 1px solid #ffcdd2;">
+                Total Funding<b style="color: #1565c0;">₹{{ total_funding|floatformat:2 }}</b>
             </div>
-            <div class="stat" style="background: #e8f5e9; border: 1px solid #c8e6c9;">
-                Total Returns<b style="color: #2e7d32;">₹{{ total_revenue|floatformat:2 }}</b>
+        {% if request.user.is_superuser or request.user.is_staff %}
+            <div class="stat" style="background: #ffebee; border: 1px solid #c8e6c9;">
+                Total Expenses<b style="color: #c62828;">₹{{ total_expenses|floatformat:2 }}</b>
             </div>
             <div class="stat" style="background: #e3f2fd; border: 1px solid #bbdefb;">
-                Net Profit/Loss<b style="color: {% if net_profit >= 0 %}#1565c0{% else %}#c62828{% endif %};">₹{{ net_profit|floatformat:2 }}</b>
+                Farm Net Balance/Loss<b style="color: {% if net_profit >= 0 %}#1565c0{% else %}#c62828{% endif %};">₹{{ net_profit|floatformat:2 }}</b>
             </div>
+            {% else %}
+                <div class="stat" style="background: #e8f5e9; border: 1px solid #c8e6c9;">
+                    Total Returns<b style="color: #2e7d32;">₹{{ total_returns|floatformat:2 }}</b>
+                </div>
+                <div class="stat" style="background: #e3f2fd; border: 1px solid #bbdefb;">
+                    My Net Profit<b style="color: {% if net_profit >= 0 %}#1565c0{% else %}#c62828{% endif %};">₹{{ net_profit|floatformat:2 }}</b>
+                </div>
+            {% endif %}
         </div>
 
         <!-- Ledger Table -->
@@ -248,6 +257,7 @@
                     <tr style="border-bottom: 2px solid #e8f5e9; color: #666; font-size: 12px; text-transform: uppercase;">
                         <th style="padding: 8px;">Date</th>
                         <th style="padding: 8px;">Block</th>
+                        <th style="padding: 8px;">Owner</th> <!-- ADDED OWNER -->
                         <th style="padding: 8px;">Description</th>
                         <th style="padding: 8px; text-align: right;">Amount (₹)</th>
                     </tr>
@@ -259,21 +269,36 @@
                             {{ tx.date|date:"Y-m-d"|default:"—" }}
                         </td>
                         <td style="padding: 10px 8px; font-weight: 600;">Block {{ tx.block }}</td>
+                        <!-- ADDED OWNER COLUMN -->
+                        <td style="padding: 10px 8px; color: #555;">
+                            {{ tx.owner_name }}
+                        </td>                        
                         <td style="padding: 10px 8px;">
                             {{ tx.description }}
-                            {% if tx.is_income %}
-                                <span style="background:#e8f5e9; color:#2e7d32; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:6px; font-weight: 700;">RETURN</span>
+
+                        
+                        {% if tx.is_funding %}
+                                <!-- Blue badge for Funding -->
+                                <span style="background:#e3f2fd; color:#1565c0; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:6px; font-weight: 700;">FUNDING</span>
+                        {% elif tx.is_expense %}
+                                <span style="background:#ffebee; color:#c62828; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:6px; font-weight: 700;">EXPENSE</span>
+
                             {% else %}
-                                <span style="background:#ffebee; color:#c62828; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:6px; font-weight: 700;">INVESTMENT</span>
+                                <span style="background:#e8f5e9; color:#2e7d32; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:6px; font-weight: 700;">RETURN</span>
+                          
                             {% endif %}
                         </td>
-                        <td style="padding: 10px 8px; text-align: right; font-weight: 700; color: {% if tx.is_income %}#2e7d32{% else %}#c62828{% endif %};">
-                            {% if tx.is_income %}+{% endif %}{{ tx.amount|floatformat:2 }}
+                        <td style="padding: 10px 8px; text-align: right; font-weight: 700; color: {% if tx.is_expense %}#c62828{% elif tx.is_funding %}#1565c0{% else %}#2e7d32{% endif %};">
+                            {% if tx.amount > 0 %}
+                                + ₹{{ tx.amount|floatformat:2 }}
+                            {% else %}
+                                - ₹{{ tx.amount|floatformat:2|slice:"1:" }}
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" style="padding: 30px; text-align: center; color: #888; font-style: italic;">
+                        <td colspan="5" style="padding: 30px; text-align: center; color: #888; font-style: italic;">
                             No financial transactions recorded yet. Add an investment in the Admin panel or harvest a row.
                         </td>
                     </tr>

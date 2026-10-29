@@ -93,22 +93,45 @@ def dashboard(request):
     from .models import HarvestRecord
     harvests = HarvestRecord.objects.filter(block__in=visible_qs).order_by('-harvest_date')
     
-    total_investment = sum(float(b.investment_amount or 0) for b in visible_qs)
-    total_revenue = sum(float(h.revenue or 0) for h in harvests)
-    net_profit = total_revenue - total_investment
+    total_funding = sum(float(b.amount or 0) for b in visible_qs if b.transaction_type == 'FUNDING')
+    total_expenses = sum(float(b.amount or 0) for b in visible_qs if b.transaction_type == 'EXPENSE')
+    total_returns = sum(float(h.revenue or 0) for h in harvests)
+    
+    is_admin = request.user.is_superuser or request.user.is_staff
+
+    if is_admin:
+        # Farm Manager View: Profit = Funding - Expenses (Returns are ignored)
+        net_profit = total_funding - total_expenses
+    else:
+        # Owner View: Profit = Harvest Returns - Funding (Expenses are ignored, they are farm's responsibility)
+        net_profit = total_returns - total_funding
 
     transactions = []
     
-    # Add Investments
+    # Add Funding & Expenses
     for b in visible_qs:
-        if b.investment_amount and b.investment_amount > 0:
+        if b.amount and b.amount > 0:
+            mode = b.get_investment_mode_display() or "Unknown"
+            
+            if b.transaction_type == 'EXPENSE':
+                cat = b.get_expense_category_display() or "General"
+                desc = f"{cat} paid via {mode}"
+                amount = -float(b.amount) 
+                is_income = False
+            else:
+                desc = f"Funding received via {mode}"
+                amount = float(b.amount)   
+                is_income = True
+
             transactions.append({
                 'date': None, 
-                'type': 'Investment',
                 'block': b.block_number,
-                'description': f"Investment via {b.get_investment_mode_display() or 'Unknown'}",
-                'amount': -float(b.investment_amount), 
-                'is_income': False
+                'owner_name': b.owner.name if b.owner else '—',
+                'description': desc,
+                'amount': amount,
+                'is_income': is_income,                    
+                'is_funding': (b.transaction_type == 'FUNDING'), 
+                'is_expense': (b.transaction_type == 'EXPENSE'),                  
             })
             
     # Add Harvests
@@ -116,11 +139,13 @@ def dashboard(request):
         if h.revenue and h.revenue > 0:
             transactions.append({
                 'date': h.harvest_date,
-                'type': 'Harvest',
                 'block': h.block.block_number,
+                'owner_name': h.block.owner.name if h.block.owner else '—',
                 'description': f"{h.plant_type} (Row {h.row_number})",
                 'amount': float(h.revenue),
-                'is_income': True
+                'is_income': True,
+                'is_funding': False,
+                'is_expense': False,
             })
             
     # Sort: Newest dates first. (Investments have date=None so they go to the top)
@@ -136,8 +161,9 @@ def dashboard(request):
         'cultivating_unowned': cultivating_unowned,
         
         # Pass the financial variables to the template
-        'total_investment': total_investment,
-        'total_revenue': total_revenue,
+        'total_funding': total_funding,
+        'total_expenses': total_expenses,
+        'total_returns': total_returns,
         'net_profit': net_profit,
         'transactions': transactions,
     }
