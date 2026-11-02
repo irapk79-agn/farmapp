@@ -1,7 +1,9 @@
 from django.contrib import admin
-from .models import Owner, Block, Row
-from .models import Owner, Block, Row, HarvestRecord
-
+from django.contrib.admin.models import LogEntry, CHANGE
+from django.contrib.contenttypes.models import ContentType
+from django import forms
+from django.db import models
+from .models import Owner, Block, Row, HarvestRecord, Transaction
 @admin.register(Owner)
 class OwnerAdmin(admin.ModelAdmin):
     list_display = ('name', 'phone', 'email')
@@ -14,27 +16,38 @@ class RowInline(admin.TabularInline):
         'count_per_plantation', 'yield_per_plantation', 'rate', 'duration',
         'seeding_date','planted_date', 'harvest_date',
     )
+class TransactionInline(admin.TabularInline):
+    model = Transaction
+    extra = 1
+    fields = ('date', 'transaction_type', 'amount', 'investment_mode', 'expense_category', 'notes')
 @admin.register(Block)
 class BlockAdmin(admin.ModelAdmin):
-    list_display = ('block_number', 'owner','amount', 'investment_mode', 'row_count')
-    list_filter = ('owner', 'transaction_type', 'investment_mode')
+    # 1. Removed 'amount' and 'investment_mode' here
+    list_display = ('block_number', 'owner', 'row_count') 
+    
+    # 2. Removed 'transaction_type' and 'investment_mode' here
+    list_filter = ('owner',) 
+    
     search_fields = ('block_number', 'owner__name')
-    inlines = [RowInline]
+    
+    # 3. Added the TransactionInline here
+    inlines = [TransactionInline, RowInline] 
+    
     save_on_top = True
-    #actions = [assign_owner_action]
-    change_list_template = "admin/block_changelist.html" 
-   
-     # Show the new financial fields in the edit form
+    change_list_template = "admin/block_changelist.html"
+    
+    
+    
+    # 4. Removed the old Financials fieldset
     fieldsets = (
         ('Basic Info', {
             'fields': ('block_number', 'owner', 'notes')
         }),
-        ('Financials', {
-            'fields': ('amount', 'transaction_type', 'investment_mode', 'expense_category'),
-            'description': "Enter the transaction details. If it's an expense, select a category."
-        }),
     )
-
+     
+    formfield_overrides = {
+        models.TextField: {'widget': forms.Textarea(attrs={'rows': 3, 'cols': 60})},
+    } 
     def row_count(self, obj):
         return obj.rows.count()
 
@@ -86,3 +99,14 @@ class HarvestRecordAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return request.user.is_superuser
+
+def log_row_update(request, row, message):
+        """Logs a change made outside the admin panel into the admin's history."""
+        LogEntry.objects.log_action(
+          user_id=request.user.pk,
+          content_type_id=ContentType.objects.get_for_model(row).pk,
+          object_id=row.pk,
+          object_repr=str(row),
+         action_flag=CHANGE,
+         change_message=message
+      )

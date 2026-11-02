@@ -1,4 +1,7 @@
 from django.db import models
+from django.utils import timezone
+#from django import forms
+from django.core.exceptions import ValidationError
 
 DURATION_CHOICES = [
      ('', '— Select duration —'),
@@ -29,7 +32,7 @@ class Block(models.Model):
     notes = models.TextField(blank=True)
     
     # --- NEW FINANCIAL FIELDS ---
-    amount = models.DecimalField(
+    """amount = models.DecimalField(
         max_digits=12, decimal_places=2, default=0.00,
         help_text="Total amount invested in this block."
     )
@@ -49,7 +52,7 @@ class Block(models.Model):
             ('BANK', 'Bank Transfer'),
             ('OTHER', 'Other'),
         ]
-    )
+    )"""
     # ----------------------------
     expense_category = models.CharField(
         max_length=30, blank=True,
@@ -267,3 +270,43 @@ class HarvestRecord(models.Model):
 
     def __str__(self):
         return f"B{self.block.block_number}-R{self.row_number} harvested {self.harvest_date}"
+
+class Transaction(models.Model):
+    block = models.ForeignKey(Block, on_delete=models.CASCADE, related_name='transactions')
+    date = models.DateField(default=timezone.now)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    
+    TRANSACTION_TYPES = [
+        ('FUNDING', 'Funding (In)'),
+        ('EXPENSE', 'Expense (Out)'),
+    ]
+    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES, default='FUNDING')
+    
+    investment_mode = models.CharField(
+        max_length=20, blank=True,
+        choices=[('CASH', 'Cash'), ('UPI', 'UPI'), ('BANK', 'Bank Transfer'), ('OTHER', 'Other')]
+    )
+    expense_category = models.CharField(
+        max_length=30, blank=True,
+        choices=[('SEEDS', 'Seeds'), ('LABOR', 'Labor / Wages'), ('FERTILIZER', 'Fertilizer / Pesticides'), ('OTHER', 'Other')]
+    )
+    notes = models.CharField(max_length=255, blank=True)
+    def clean(self):
+        super().clean()
+        # Validation: If Funding, category must be empty
+        if self.transaction_type == 'FUNDING' and self.expense_category:
+            raise ValidationError({
+                'expense_category': "Expense Category can only be set if the Transaction Type is 'Expense'. Please clear it or change the type."
+            })
+        
+        # Validation: If Expense, category should ideally be chosen (optional but good practice)
+        if self.transaction_type == 'EXPENSE' and not self.expense_category:
+            raise ValidationError({
+                'expense_category': "Please select an Expense Category for this expense."
+            })
+
+    class Meta:
+        ordering = ['-date', '-id']
+
+    def __str__(self):
+        return f"{self.transaction_type} ₹{self.amount} for Block {self.block.block_number}"

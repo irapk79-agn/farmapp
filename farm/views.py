@@ -88,56 +88,55 @@ def dashboard(request):
     }
 
     # ==========================================
-    # NEW FINANCIAL LOGIC
+    # NEW FINANCIAL LOGIC (Based on Transactions)
     # ==========================================
-    from .models import HarvestRecord
+    from .models import HarvestRecord, Transaction
     harvests = HarvestRecord.objects.filter(block__in=visible_qs).order_by('-harvest_date')
     
-    total_funding = sum(float(b.amount or 0) for b in visible_qs if b.transaction_type == 'FUNDING')
-    total_expenses = sum(float(b.amount or 0) for b in visible_qs if b.transaction_type == 'EXPENSE')
+    # Sum up the transactions
+    all_transactions = Transaction.objects.filter(block__in=visible_qs).order_by('-date')
+    
+    total_funding = sum(float(t.amount) for t in all_transactions if t.transaction_type == 'FUNDING')
+    total_expenses = sum(float(t.amount) for t in all_transactions if t.transaction_type == 'EXPENSE')
     total_returns = sum(float(h.revenue or 0) for h in harvests)
     
     is_admin = request.user.is_superuser or request.user.is_staff
 
     if is_admin:
-        # Farm Manager View: Profit = Funding - Expenses (Returns are ignored)
         net_profit = total_funding - total_expenses
     else:
-        # Owner View: Profit = Harvest Returns - Funding (Expenses are ignored, they are farm's responsibility)
         net_profit = total_returns - total_funding
 
-    transactions = []
+    transactions_data = []
     
     # Add Funding & Expenses
-    for b in visible_qs:
-        if b.amount and b.amount > 0:
-            mode = b.get_investment_mode_display() or "Unknown"
-            
-            if b.transaction_type == 'EXPENSE':
-                cat = b.get_expense_category_display() or "General"
-                desc = f"{cat} paid via {mode}"
-                amount = -float(b.amount) 
-                is_income = False
-            else:
-                desc = f"Funding received via {mode}"
-                amount = float(b.amount)   
-                is_income = True
+    for t in all_transactions:
+        mode = t.get_investment_mode_display() or "Unknown"
+        if t.transaction_type == 'EXPENSE':
+            cat = t.get_expense_category_display() or "General"
+            desc = f"{cat} paid via {mode}"
+            amount = -float(t.amount) 
+            is_income = False
+        else:
+            desc = f"Funding received via {mode}"
+            amount = float(t.amount)   
+            is_income = True
 
-            transactions.append({
-                'date': None, 
-                'block': b.block_number,
-                'owner_name': b.owner.name if b.owner else '—',
-                'description': desc,
-                'amount': amount,
-                'is_income': is_income,                    
-                'is_funding': (b.transaction_type == 'FUNDING'), 
-                'is_expense': (b.transaction_type == 'EXPENSE'),                  
-            })
+        transactions_data.append({
+            'date': t.date, # <-- Real date now!
+            'block': t.block.block_number,
+            'owner_name': t.block.owner.name if t.block.owner else '—',
+            'description': desc,
+            'amount': amount,
+            'is_income': is_income,                    
+            'is_funding': (t.transaction_type == 'FUNDING'), 
+            'is_expense': (t.transaction_type == 'EXPENSE'),                  
+        })
             
     # Add Harvests
     for h in harvests:
         if h.revenue and h.revenue > 0:
-            transactions.append({
+            transactions_data.append({
                 'date': h.harvest_date,
                 'block': h.block.block_number,
                 'owner_name': h.block.owner.name if h.block.owner else '—',
@@ -148,8 +147,8 @@ def dashboard(request):
                 'is_expense': False,
             })
             
-    # Sort: Newest dates first. (Investments have date=None so they go to the top)
-    transactions.sort(key=lambda x: (str(x['date']), x['is_income']), reverse=True)
+    # Sort: Newest dates first. 
+    transactions_data.sort(key=lambda x: (str(x['date']), x['is_income']), reverse=True)
     # ==========================================
 
     context = {
@@ -165,7 +164,7 @@ def dashboard(request):
         'total_expenses': total_expenses,
         'total_returns': total_returns,
         'net_profit': net_profit,
-        'transactions': transactions,
+        'transactions': transactions_data,
     }
     return render(request, 'farm/dashboard.html', context)
 @login_required
@@ -200,6 +199,15 @@ def block_detail(request, block_number):
         was_harvested = (row.status == 'HARVESTED')
         old_status = row.status
 
+        # --- Track what changed for the history log ---
+        changes = []
+        if row.status != new_status: changes.append(f"Status to '{new_status}'")
+        if row.plant_type != plant_type: changes.append(f"Plant to '{plant_type}'")
+        if row.count_per_plantation != count_per: changes.append(f"Count to '{count_per}'")
+        if row.yield_per_plantation != yield_per: changes.append(f"Yield to '{yield_per}'")
+        if row.duration != duration: changes.append(f"Duration to '{duration}'")
+        if str(row.rate or '') != rate_raw: changes.append(f"Rate to '{rate_raw}'")
+
         # Apply the updates
         if new_status in dict(Row.STATUS_CHOICES):
             row.status = new_status
@@ -219,6 +227,12 @@ def block_detail(request, block_number):
                 return redirect('block_detail', block_number=block_number)
 
         row.save()
+
+        # --- Log to Admin History ---
+        if changes:
+            from .admin import log_row_update
+            log_row_update(request, row, f"Updated from portal: {', '.join(changes)}")
+
 
         # --- Auto-create a HarvestRecord on transition into HARVESTED ---
         if row.status == 'HARVESTED' and old_status != 'HARVESTED':
