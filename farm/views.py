@@ -198,7 +198,14 @@ def block_detail(request, block_number):
         row = get_object_or_404(Row, id=row_id, block=block)
         was_harvested = (row.status == 'HARVESTED')
         old_status = row.status
-
+        
+        # Check if staff clicked the "Reset for Next Harvest" button
+        if request.POST.get('reset_harvest'):
+            row.status = 'WATERING' # Set it back to watering (or PLOWING if you prefer)
+            row.harvest_date = None # Clear the previous harvest date
+            row.save()
+            messages.success(request, f'🔄 Row {row.row_number} reset for the next harvest.')
+            return redirect('block_detail', block_number=block_number)
         # --- Track what changed for the history log ---
         changes = []
         if row.status != new_status: changes.append(f"Status to '{new_status}'")

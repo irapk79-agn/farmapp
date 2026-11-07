@@ -1,0 +1,52 @@
+
+{% extends "admin/change_form.html" %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // 1. Find the main "Save" button at the top
+            const topSaveButton = document.querySelector('input[name="_save"]');
+            
+            if (topSaveButton) {
+                // 2. Find all the inline table containers
+                const inlineTables = document.querySelectorAll('.inline-group table');
+                
+                inlineTables.forEach(function(table) {
+                    // 3. Create a new row at the very bottom of the table
+                    const newRow = document.createElement('tr');
+                    const newCell = document.createElement('td');
+                    newCell.colSpan = 10; 
+                    newCell.style.padding = '15px 10px';
+                    newCell.style.textAlign = 'right'; // Align right
+                    newCell.style.borderTop = '1px solid #444'; // Add a separator line
+
+                    // 4. Create the Save button
+                    const bottomSaveBtn = document.createElement('button');
+                    bottomSaveBtn.type = 'button';
+                    bottomSaveBtn.innerHTML = '💾 Save Block & Changes';
+                    
+                    // 5. Style it bright green so it stands out
+                    bottomSaveBtn.style.background = '#28a745'; // Bootstrap success green
+                    bottomSaveBtn.style.color = 'white';
+                    bottomSaveBtn.style.padding = '8px 16px';
+                    bottomSaveBtn.style.cursor = 'pointer';
+                    bottomSaveBtn.style.border = 'none';
+                    bottomSaveBtn.style.borderRadius = '4px';
+                    bottomSaveBtn.style.fontWeight = 'bold';
+                    bottomSaveBtn.style.fontSize = '14px';
+
+                    // 6. When clicked, trigger the main Save button
+                    bottomSaveBtn.addEventListener('click', function() {
+                        topSaveButton.click();
+                    });
+
+                    // 7. Append it
+                    newCell.appendChild(bottomSaveBtn);
+                    newRow.appendChild(newCell);
+                    table.appendChild(newRow);
+                });
+            }
+        });
+    </script>
+{% endblock %}

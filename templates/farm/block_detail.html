@@ -170,7 +170,15 @@
                     </div>
                 </div>
 
-                <button type="submit" class="save">Save</button>
+                <button type="submit" class="save">Save</button>                    
+                <!-- Reset Button (Only shows if status is HARVESTED) -->
+                    {% if row.status == 'HARVESTED' %}
+                        <button type="submit" name="reset_harvest" value="true" 
+                                style="background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">
+                            🔄 Reset for Next Harvest
+                        </button>
+                    {% endif %}
+                </div>
             </form>
         {% else %}
             <div class="row-card">
